@@ -1,0 +1,102 @@
+bundle:
+  name: order-pipeline
+
+include:
+  - resources/*.yml
+
+variables:
+  sql_warehouse_id:
+    description: Databricks SQL Warehouse ID used by SQL Gold materialized-view task.
+    default: "REPLACE_WITH_SQL_WAREHOUSE_ID"
+  silver_table_name:
+    description: Fully qualified Silver table name used by SQL Gold materialized-view task.
+    default: "workspace.sales.silver_orders"
+  gold_materialized_view_name:
+    description: Fully qualified Gold materialized view name used by SQL Gold materialized-view task.
+    default: "workspace.sales.gold_daily_metrics_mv"
+  maintenance_vacuum_retention_hours:
+    description: VACUUM retention policy in hours.
+    default: "168"
+  maintenance_audit_replay_required:
+    description: Whether audit/replay requirement is enabled for maintenance policy.
+    default: "true"
+  maintenance_slow_downstream_max_lag_hours:
+    description: Maximum expected lag for slow downstream readers (hours).
+    default: "24"
+  maintenance_audit_table:
+    description: Delta table for maintenance audit rows.
+    default: "workspace.sales.maintenance_audit"
+  maintenance_alert_on_failure:
+    description: Whether maintenance should emit alert logs on failures.
+    default: "true"
+  stage_audit_table:
+    description: Delta table for stage-level audit rows.
+    default: "workspace.sales.stage_audit"
+  stage_alert_on_anomaly:
+    description: Whether stage-level anomaly alerts are enabled.
+    default: "true"
+  stage_alert_min_output_ratio:
+    description: Minimum acceptable output/input ratio before stage alert.
+    default: "0.1"
+  stage_alert_max_rejected_count:
+    description: Maximum rejected records before stage alert.
+    default: "1000"
+  contract_require_updated_at:
+    description: Whether Silver validation requires updatedAt.
+    default: "true"
+  contract_require_event_version:
+    description: Whether Silver validation requires eventVersion.
+    default: "true"
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-f1a90017-00ba.cloud.databricks.com/
+    variables:
+      maintenance_vacuum_retention_hours: "72"
+      maintenance_audit_replay_required: "false"
+      maintenance_slow_downstream_max_lag_hours: "6"
+      maintenance_audit_table: "workspace.sales.maintenance_audit_dev"
+      maintenance_alert_on_failure: "true"
+      stage_audit_table: "workspace.sales.stage_audit_dev"
+      stage_alert_on_anomaly: "true"
+      stage_alert_min_output_ratio: "0.05"
+      stage_alert_max_rejected_count: "5000"
+      contract_require_updated_at: "false"
+      contract_require_event_version: "false"
+
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-f1a90017-00ba.cloud.databricks.com/
+    variables:
+      maintenance_vacuum_retention_hours: "168"
+      maintenance_audit_replay_required: "true"
+      maintenance_slow_downstream_max_lag_hours: "24"
+      maintenance_audit_table: "workspace.sales.maintenance_audit"
+      maintenance_alert_on_failure: "true"
+      stage_audit_table: "workspace.sales.stage_audit"
+      stage_alert_on_anomaly: "true"
+      stage_alert_min_output_ratio: "0.1"
+      stage_alert_max_rejected_count: "1000"
+      contract_require_updated_at: "true"
+      contract_require_event_version: "true"
+
+  prod_sql_mv:
+    mode: production
+    workspace:
+      host: https://dbc-f1a90017-00ba.cloud.databricks.com/
+    variables:
+      maintenance_vacuum_retention_hours: "168"
+      maintenance_audit_replay_required: "true"
+      maintenance_slow_downstream_max_lag_hours: "24"
+      maintenance_audit_table: "workspace.sales.maintenance_audit"
+      maintenance_alert_on_failure: "true"
+      stage_audit_table: "workspace.sales.stage_audit"
+      stage_alert_on_anomaly: "true"
+      stage_alert_min_output_ratio: "0.1"
+      stage_alert_max_rejected_count: "1000"
+      contract_require_updated_at: "true"
+      contract_require_event_version: "true"

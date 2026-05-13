@@ -1,0 +1,66 @@
+resources:
+  jobs:
+    order_pipeline_job_sql_gold_mv:
+      name: "Order Pipeline SQL Gold MV Job"
+      schedule:
+        quartz_cron_expression: "0 0/5 * * * ?"
+        timezone_id: "UTC"
+        pause_status: PAUSED
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "4"
+            java_dependencies:
+              - /Volumes/workspace/sales/artifacts/orderpipeline-0.0.1-SNAPSHOT.jar
+
+      tasks:
+        - task_key: ingest_bronze
+          environment_key: default
+          spark_jar_task:
+            main_class_name: com.company.orderpipeline.OrderPipelineApplication
+            parameters:
+              - "bronze"
+              - "--spring.profiles.active=prod"
+              - "--pipeline.production.mode=true"
+              - "--pipeline.alert.rescued-record-threshold=50"
+              - "--pipeline.contract.require-updated-at=${var.contract_require_updated_at}"
+              - "--pipeline.contract.require-event-version=${var.contract_require_event_version}"
+              - "--pipeline.maintenance.audit.table=${var.maintenance_audit_table}"
+              - "--pipeline.maintenance.alert.on-failure=${var.maintenance_alert_on_failure}"
+              - "--pipeline.stage.audit.table=${var.stage_audit_table}"
+              - "--pipeline.stage.alert.on-anomaly=${var.stage_alert_on_anomaly}"
+              - "--pipeline.stage.alert.min-output-ratio=${var.stage_alert_min_output_ratio}"
+              - "--pipeline.stage.alert.max-rejected-count=${var.stage_alert_max_rejected_count}"
+
+        - task_key: process_silver
+          depends_on:
+            - task_key: ingest_bronze
+          environment_key: default
+          spark_jar_task:
+            main_class_name: com.company.orderpipeline.OrderPipelineApplication
+            parameters:
+              - "silver"
+              - "--spring.profiles.active=prod"
+              - "--pipeline.production.mode=true"
+              - "--pipeline.alert.rescued-record-threshold=50"
+              - "--pipeline.contract.require-updated-at=${var.contract_require_updated_at}"
+              - "--pipeline.contract.require-event-version=${var.contract_require_event_version}"
+              - "--pipeline.maintenance.audit.table=${var.maintenance_audit_table}"
+              - "--pipeline.maintenance.alert.on-failure=${var.maintenance_alert_on_failure}"
+              - "--pipeline.stage.audit.table=${var.stage_audit_table}"
+              - "--pipeline.stage.alert.on-anomaly=${var.stage_alert_on_anomaly}"
+              - "--pipeline.stage.alert.min-output-ratio=${var.stage_alert_min_output_ratio}"
+              - "--pipeline.stage.alert.max-rejected-count=${var.stage_alert_max_rejected_count}"
+
+        - task_key: refresh_gold_materialized_view
+          depends_on:
+            - task_key: process_silver
+          sql_task:
+            warehouse_id: ${var.sql_warehouse_id}
+            file:
+              path: ${workspace.file_path}/resources/sql/gold_daily_metrics_mv.sql
+              source: WORKSPACE
+            parameters:
+              silver_table_name: ${var.silver_table_name}
+              gold_materialized_view_name: ${var.gold_materialized_view_name}

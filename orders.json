@@ -1,0 +1,26 @@
+[
+    {
+        "orderId": "o1",
+        "customerId": "c1",
+        "amount": 100000,
+        "timestamp": "2026-05-12T10:00:00Z",
+        "updatedAt": "2026-05-12T10:05:00Z",
+        "eventVersion": 1
+    },
+    {
+        "orderId": "o2",
+        "customerId": "c2",
+        "amount": 250000,
+        "timestamp": "2026-05-12T11:00:00Z",
+        "updatedAt": "2026-05-12T11:03:00Z",
+        "eventVersion": 1
+    },
+    {
+        "orderId": null,
+        "customerId": "c3",
+        "amount": 300000,
+        "timestamp": "2026-05-12T12:00:00Z",
+        "updatedAt": "2026-05-12T12:01:00Z",
+        "eventVersion": 1
+    }
+]

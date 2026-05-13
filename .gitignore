@@ -1,0 +1,13 @@
+﻿# Build output
+/target/
+
+# IDE / local workspace
+/.vscode/
+/.idea/
+
+# Databricks local bundle state
+/.databricks/
+
+# OS files
+.DS_Store
+Thumbs.db
