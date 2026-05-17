@@ -5,6 +5,11 @@
 /.vscode/
 /.idea/
 
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+
 # Databricks local bundle state
 /.databricks/
 

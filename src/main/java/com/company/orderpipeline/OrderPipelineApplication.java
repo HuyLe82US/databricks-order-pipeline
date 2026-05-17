@@ -1,6 +1,7 @@
 package com.company.orderpipeline;
 
 import com.company.orderpipeline.service.OrderTransformationService;
+import com.company.orderpipeline.service.OrderTransformationService.SilverProcessingOptions;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -114,14 +115,13 @@ public class OrderPipelineApplication {
                             bronzeTable,
                             silverTable,
                             quarantineTable,
-                            productionMode,
-                            rescuedRecordAlertThreshold,
-                            requireUpdatedAt,
-                            requireEventVersion,
-                            stageAuditTable,
-                            stageAlertOnAnomaly,
-                            stageMinOutputRatio,
-                            stageMaxRejectedCount);
+                            SilverProcessingOptions.defaults(productionMode, rescuedRecordAlertThreshold)
+                                    .requireUpdatedAt(requireUpdatedAt)
+                                    .requireEventVersion(requireEventVersion)
+                                    .stageAuditTable(stageAuditTable)
+                                    .alertOnAnomaly(stageAlertOnAnomaly)
+                                    .minOutputRatio(stageMinOutputRatio)
+                                    .maxRejectedCount(stageMaxRejectedCount));
                 }
                 if ("gold".equals(stage) || "all".equals(stage)) {
                     log.info("--- Running Gold Stage ---");

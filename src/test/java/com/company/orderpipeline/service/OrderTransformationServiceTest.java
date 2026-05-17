@@ -1,5 +1,6 @@
 package com.company.orderpipeline.service;
 
+import com.company.orderpipeline.service.OrderTransformationService.SilverProcessingOptions;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
@@ -312,14 +313,9 @@ public class OrderTransformationServiceTest {
                 bronzeTable,
                 silverTable,
                 quarantineTable,
-                true,
-                100,
-                true,
-                false,
-                "",
-                true,
-                0.1,
-                1000);
+                SilverProcessingOptions.defaults(true, 100)
+                        .requireUpdatedAt(true)
+                        .requireEventVersion(false));
 
         assertEquals(1, spark.read().table(silverTable).count());
         assertFalse(spark.catalog().tableExists(quarantineTable));

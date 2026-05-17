@@ -71,6 +71,58 @@ public class OrderTransformationService {
     private static final Pattern TRUSTED_TABLE_IDENTIFIER_PATTERN = Pattern.compile(
             "[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*){0,2}");
 
+    public static final class SilverProcessingOptions {
+        private final boolean productionMode;
+        private final long rescuedRecordAlertThreshold;
+        private boolean requireUpdatedAt;
+        private boolean requireEventVersion;
+        private String stageAuditTable = "";
+        private boolean alertOnAnomaly = true;
+        private double minOutputRatio = 0.1;
+        private long maxRejectedCount = 1000;
+
+        private SilverProcessingOptions(boolean productionMode, long rescuedRecordAlertThreshold) {
+            this.productionMode = productionMode;
+            this.rescuedRecordAlertThreshold = rescuedRecordAlertThreshold;
+            this.requireUpdatedAt = productionMode;
+            this.requireEventVersion = productionMode;
+        }
+
+        public static SilverProcessingOptions defaults(boolean productionMode, long rescuedRecordAlertThreshold) {
+            return new SilverProcessingOptions(productionMode, rescuedRecordAlertThreshold);
+        }
+
+        public SilverProcessingOptions requireUpdatedAt(boolean requireUpdatedAt) {
+            this.requireUpdatedAt = requireUpdatedAt;
+            return this;
+        }
+
+        public SilverProcessingOptions requireEventVersion(boolean requireEventVersion) {
+            this.requireEventVersion = requireEventVersion;
+            return this;
+        }
+
+        public SilverProcessingOptions stageAuditTable(String stageAuditTable) {
+            this.stageAuditTable = stageAuditTable;
+            return this;
+        }
+
+        public SilverProcessingOptions alertOnAnomaly(boolean alertOnAnomaly) {
+            this.alertOnAnomaly = alertOnAnomaly;
+            return this;
+        }
+
+        public SilverProcessingOptions minOutputRatio(double minOutputRatio) {
+            this.minOutputRatio = minOutputRatio;
+            return this;
+        }
+
+        public SilverProcessingOptions maxRejectedCount(long maxRejectedCount) {
+            this.maxRejectedCount = maxRejectedCount;
+            return this;
+        }
+    }
+
     private static final StructType ORDER_EVENT_SCHEMA = new StructType(new StructField[] {
             DataTypes.createStructField("orderId", DataTypes.StringType, true),
             DataTypes.createStructField("customerId", DataTypes.StringType, true),
@@ -200,61 +252,26 @@ public class OrderTransformationService {
                 bronzeTable,
                 silverTable,
                 quarantineTable,
-                productionMode,
-                rescuedRecordAlertThreshold,
-                productionMode,
-                productionMode,
-                "",
-                true,
-                0.1,
-                1000);
+                SilverProcessingOptions.defaults(productionMode, rescuedRecordAlertThreshold));
     }
 
     public void processSilver(
             String bronzeTable,
             String silverTable,
             String quarantineTable,
-            boolean productionMode,
-            long rescuedRecordAlertThreshold,
-            String stageAuditTable,
-            boolean alertOnAnomaly,
-            double minOutputRatio,
-            long maxRejectedCount) {
-        processSilver(
-                bronzeTable,
-                silverTable,
-                quarantineTable,
-                productionMode,
-                rescuedRecordAlertThreshold,
-                productionMode,
-                productionMode,
-                stageAuditTable,
-                alertOnAnomaly,
-                minOutputRatio,
-                maxRejectedCount);
-    }
-
-    public void processSilver(
-            String bronzeTable,
-            String silverTable,
-            String quarantineTable,
-            boolean productionMode,
-            long rescuedRecordAlertThreshold,
-            boolean requireUpdatedAt,
-            boolean requireEventVersion,
-            String stageAuditTable,
-            boolean alertOnAnomaly,
-            double minOutputRatio,
-            long maxRejectedCount) {
+            SilverProcessingOptions options) {
         String trustedBronzeTable = requireTrustedTableName(bronzeTable, "bronzeTable");
         String trustedSilverTable = requireTrustedTableName(silverTable, "silverTable");
         String trustedQuarantineTable = requireTrustedTableName(quarantineTable, "quarantineTable");
-        String trustedStageAuditTable = normalizeOptionalTrustedTableName(stageAuditTable, "stageAuditTable");
+        String trustedStageAuditTable = normalizeOptionalTrustedTableName(options.stageAuditTable, "stageAuditTable");
         log.info("Processing Silver from: {} to {}", trustedBronzeTable, trustedSilverTable);
 
         long outputBefore = countTableIfExists(trustedSilverTable);
         Dataset<Row> bronzeData = sparkSession.read().table(trustedBronzeTable);
-        Dataset<Row> validatedOrders = buildValidatedOrders(bronzeData, requireUpdatedAt, requireEventVersion).cache();
+        Dataset<Row> validatedOrders = buildValidatedOrders(
+                bronzeData,
+                options.requireUpdatedAt,
+                options.requireEventVersion).cache();
 
         Dataset<Row> badRecords = buildBadRecords(validatedOrders).cache();
         Dataset<Row> cleanedOrders = buildCleanOrders(validatedOrders);
@@ -278,11 +295,11 @@ public class OrderTransformationService {
             writeBadRecords(badRecords, trustedQuarantineTable);
         }
 
-        if (productionMode && rescuedRecordCount > rescuedRecordAlertThreshold) {
+        if (options.productionMode && rescuedRecordCount > options.rescuedRecordAlertThreshold) {
             String errorMessage = String.format(
                     "Rescued/corrupt records (%d) exceeded threshold (%d).",
                     rescuedRecordCount,
-                    rescuedRecordAlertThreshold);
+                    options.rescuedRecordAlertThreshold);
             log.error("ALERT: {}", errorMessage);
             throw new IllegalStateException(errorMessage);
         }
@@ -298,9 +315,9 @@ public class OrderTransformationService {
                 totalRecords,
                 cleanRecordCount,
                 badRecordCount,
-                alertOnAnomaly,
-                minOutputRatio,
-                maxRejectedCount);
+                options.alertOnAnomaly,
+                options.minOutputRatio,
+                options.maxRejectedCount);
         writeStageAudit(
                 trustedStageAuditTable,
                 STAGE_SILVER,
